@@ -1,4 +1,4 @@
-name: Client - Azure Static Web Apps CI/CD
+name: Client - Azure Static Web Apps CI/CD, 13 November
     
 on:
   push:
