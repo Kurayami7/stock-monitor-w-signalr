@@ -1,7 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# Build and deploy Node.js project to Azure Function App - signalr-stock-retriever
-
 name: Server
 
 on:
@@ -11,10 +7,9 @@ on:
   workflow_dispatch:
 
 env:
-  # The source repository has the function app in a subdirectory, the action file needs to change to reflect that. In the env section, add a new variable named PACKAGE_PATH to use the package path.
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
-  NODE_VERSION: '20.x' # set this to the node version to use (supports 8.x, 10.x, 12.x)
-  PACKAGE_PATH: 'start/server' # set this to the path to your web app project, defaults to the repository root
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' 
+  NODE_VERSION: '20.x'
+  PACKAGE_PATH: 'start/server' # Correct this if the subdirectory is different
 
 jobs:
   build:
@@ -37,7 +32,6 @@ jobs:
           npm run test --if-present
           popd
 
-# The zip file is placed at the root of repository so the ../ value is necessary to place the zip file at the root.
       - name: Zip artifact for deployment
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/${{ env.PACKAGE_PATH }}'
@@ -45,18 +39,17 @@ jobs:
           popd
           cp ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/${{ env.PACKAGE_PATH }}/release.zip ./release.zip
 
-            - name: Upload artifact for deployment job
-              uses: actions/upload-artifact@v4
-              with:
-                name: node-app
-                path: release.zip
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-app
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    
     permissions:
-      id-token: write #This is required for requesting the JWT
+      id-token: write 
 
     steps:
       - name: Download artifact from build job
@@ -67,7 +60,6 @@ jobs:
       - name: Unzip artifact for deployment
         run: unzip release.zip
       
-        # Updated variables in repository settings
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -81,5 +73,4 @@ jobs:
         with:
           app-name: 'signalr-stock-retriever'
           slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          
+          package: './release.zip'
