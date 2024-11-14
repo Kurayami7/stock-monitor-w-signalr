@@ -27,167 +27,140 @@ This solution displays fake stock prices as they update:
 * [Start](./start): uses polling every minute
 * [Solution](./solution): uses database change notifications and SignalR
 
-## Set up resources
+## Overview
+
+This project demonstrates how to implement real-time updates in a web application using Azure Functions and SignalR Service. The client-side code is built with Vue.js, and the server-side functions are triggered by Cosmos DB change notifications and a SignalR binding to push data to clients.
+
+### Requirements
+
+- **Node.js**: Version 20.x or above
+- **Azure CLI**: To deploy resources to Azure
+- **Azure Functions Core Tools**: For local testing of Azure Functions
+- **GitHub CLI (optional)**: To automate actions with GitHub
+- **Vue CLI (for local development)**
+
+## Setup Resources
 
 The Azure resources are created from bash scripts in the `setup-resources` folder. This includes creating:
-
-* Azure Cosmos DB
-* Azure SignalR
-* Azure Storage (for Azure Function triggers)
+- **Azure Cosmos DB**: To store stock data and trigger change events
+- **Azure SignalR**: To enable real-time client-server communication
+- **Azure Storage**: For managing Azure Function triggers and bindings
 
 ## Ports
 
-* Client: 3000: built with webpack
-* Server: 7071: build with Azure Functions core tools
+* Client: 3000 (default port used with Webpack for local client builds)
+* Server: 7071 (default port for Azure Functions)
 
-## Starting project without SignalR
+## Starting Project without SignalR
 
-The starting project updates stock prices in a Cosmos DB database every minute with an Azure Function app and a timer trigger. The client polls for all the stock prices. 
+The starting project updates stock prices in a Cosmos DB database every minute with an Azure Function app and a timer trigger. The client polls for all the stock prices.
 
-## Ending project
+## Ending Project with SignalR Integration
 
-The starting project updates stock prices in a Cosmos DB database every minute with an Azure Function app and a timer trigger. The client uses SignalR to recieve on the Cosmos DB items with change notifications through an Azure Functions app. 
+The final solution upgrades the project to use SignalR for real-time updates. This setup pushes changes from Cosmos DB to clients via SignalR, removing the need for polling.
 
-## Deploy to Azure Static Web Apps and Azure Functions App
+## Important Configuration Details
 
-1. Deploy the backend to Azure Functions App.
+### Setting Up `BACKEND_URL`
 
-    GitHub Action workflow file should look like:
+Ensure the `BACKEND_URL` environment variable is configured correctly in GitHub Actions to point to the deployed backend endpoint. This is essential for the client to connect to the SignalR API.
 
-   ```yaml
-    # Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
-    # More GitHub Actions for Azure: https://github.com/Azure/actions
-    
-    name: Server - Build and deploy Node.js project to Azure Function App
-    
-    on:
-      push:
-        branches:
-          - main
-      workflow_dispatch:
-    
-    env:
-      # solution/server is the finished path
-      # start/server is the original path you work on
-      PACKAGE_PATH: 'solution/server' # set this to the path to your web app project, defaults to the repository root
-      AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
-      NODE_VERSION: '20.x' # set this to the node version to use (supports 8.x, 10.x, 12.x)
-    
-    jobs:
-      build:
-        runs-on: ubuntu-latest
-        steps:
-          - name: 'Checkout GitHub Action'
-            uses: actions/checkout@v4
-    
-          - name: Setup Node ${{ env.NODE_VERSION }} Environment
-            uses: actions/setup-node@v3
-            with:
-              node-version: ${{ env.NODE_VERSION }}
-    
-          - name: 'Resolve Project Dependencies Using Npm'
-            shell: bash
-            run: |
-              pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/${{ env.PACKAGE_PATH}}'
-              npm install
-              npm run build --if-present
-              npm run test --if-present
-              popd
-    
-          - name: Zip artifact for deployment
-            run: |
-              pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/${{ env.PACKAGE_PATH}}'
-              zip -r release.zip .
-              popd
-              cp ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/${{ env.PACKAGE_PATH }}/release.zip ./release.zip
-            
-          - name: Upload artifact for deployment job
-            uses: actions/upload-artifact@v3
-            with:
-              name: node-app
-              path: release.zip
-    
-      deploy:
-        runs-on: ubuntu-latest
-        needs: build
-        environment:
-          name: 'Production'
-          url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-        permissions:
-          id-token: write #This is required for requesting the JWT
-    
-        steps:
-          - name: Download artifact from build job
-            uses: actions/download-artifact@v3
-            with:
-              name: node-app
-    
-          - name: Unzip artifact for deployment
-            run: unzip release.zip
-          
-          - name: Login to Azure
-            uses: azure/login@v1
-            with:
-              client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_123 }}
-              tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_123 }}
-              subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_123 }}
-    
-          - name: 'Run Azure Functions Action'
-            uses: Azure/functions-action@v1
-            id: fa
-            with:
-              app-name: 'signalr-3'
-              slot-name: 'Production'
-              package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-   ```
+- **GitHub Actions**: Set `BACKEND_URL` as a repository secret or environment variable to match the deployed Azure Function endpoint.
+- **Local Development**: For local builds, ensure `.env` contains the correct `BACKEND_URL`.
+
+### Workflow for Deploying to Azure
+
+The project uses two GitHub Actions workflows to deploy the frontend and backend:
+
+1. **Backend Deployment (Azure Functions)**:
+   - Example GitHub Action workflow file:
    
+     ```yaml
+     name: Server - Build and deploy Node.js project to Azure Function App
+     
+     on:
+       push:
+         branches:
+           - main
+       workflow_dispatch:
+     
+     jobs:
+       build:
+         runs-on: ubuntu-latest
+         steps:
+           - uses: actions/checkout@v3
+           - uses: actions/setup-node@v3
+             with:
+               node-version: '20.x'
+           - run: |
+               npm install
+               npm run build --if-present
+           - run: zip -r release.zip .
+           - uses: actions/upload-artifact@v3
+             with:
+               name: node-app
+               path: release.zip
+     
+       deploy:
+         runs-on: ubuntu-latest
+         needs: build
+         steps:
+           - uses: actions/download-artifact@v3
+             with:
+               name: node-app
+           - uses: azure/login@v1
+             with:
+               client-id: ${{ secrets.AZURE_CLIENT_ID }}
+               tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+               subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+           - uses: Azure/functions-action@v1
+             with:
+               app-name: 'your-function-app-name'
+               package: './release.zip'
+     ```
 
+2. **Frontend Deployment (Azure Static Web Apps)**:
+   - **Azure Static Web Apps** require the `Standard` plan type to use [bring your own backend](https://learn.microsoft.com/azure/static-web-apps/functions-bring-your-own) (BYOB).
+   - Example GitHub Action workflow for Static Web App with environment variable injection for `BACKEND_URL`:
+   
+     ```yaml
+     name: Azure Static Web Apps CI/CD
 
-1. Deploy the frontend to Azure Static Web Apps in Standard plan type (not free) in order to use [bring your own backend](https://learn.microsoft.com/azure/static-web-apps/functions-bring-your-own) (byob).
+     on:
+       push:
+         branches:
+           - main
+       pull_request:
+         branches:
+           - main
 
-   * Azure Cloud: Choose the Vue.js prebuild template then edit for this example, using the [example client workflow](example-client-workflow.yml). The build relies on the injection of the repo variable to find the BACKEND_URL value during SWA build and deploy. The webpack Dotenv param for `systemvars: true` brings in the value from the GitHub step to the webpack build.
+     jobs:
+       build_and_deploy_job:
+         runs-on: ubuntu-latest
+         steps:
+           - uses: actions/checkout@v3
+           - name: Build And Deploy
+             uses: Azure/static-web-apps-deploy@v1
+             with:
+               azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+               app_location: "/solution/client"
+               api_location: "/solution/api" # if you have an API folder
+               output_location: "dist"
+             env:
+               BACKEND_URL: ${{ secrets.BACKEND_URL }}
+     ```
 
-   * Local: The client build on the local machine depends on a `.env` file at the root of the client application.
+### Configuring CORS
 
-1. In Azure Functions, enable CORS for the client URL and check `Enable Access-Control-Allow-Credentials`.
+In the Azure Function App, configure CORS settings:
+1. **Enable CORS** for the frontend's URL in the Azure Functions settings.
+2. Check **Enable Access-Control-Allow-Credentials** to allow secure cross-origin requests.
 
-## Resources
+### SignalR Negotiation and Connection Setup
 
-* [Azure SignalR service documentation](https://learn.microsoft.com/azure/azure-signalr/)
-* [Azure SignalR service samples](https://github.com/aspnet/AzureSignalR-samples)
-* [Azure Functions triggers and bindings for SignalR](https://learn.microsoft.com/azure/azure-functions/functions-bindings-signalr-service)
-
-## Trademark Notice
-
-Trademarks This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft trademarks or logos is subject to and must follow [Microsoft’s Trademark & Brand Guidelines](https://www.microsoft.com/legal/intellectualproperty/trademarks/usage/general). Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship. Any use of third-party trademarks or logos are subject to those third-party’s policies.
-
-## Contributing
-
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.microsoft.com.
-
-When you submit a pull request, a CLA-bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., label, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
-
-## Legal Notices
-
-Microsoft and any contributors grant you a license to the Microsoft documentation and other content
-in this repository under the [Creative Commons Attribution 4.0 International Public License](https://creativecommons.org/licenses/by/4.0/legalcode),
-see the [LICENSE](LICENSE) file, and grant you a license to any code in the repository under the [MIT License](https://opensource.org/licenses/MIT), see the
-[LICENSE-CODE](LICENSE-CODE) file.
-
-Microsoft, Windows, Microsoft Azure and/or other Microsoft products and services referenced in the documentation
-may be either trademarks or registered trademarks of Microsoft in the United States and/or other countries.
-The licenses for this project do not grant you rights to use any Microsoft names, logos, or trademarks.
-Microsoft's general trademark guidelines can be found at http://go.microsoft.com/fwlink/?LinkID=254653.
-
-Privacy information can be found at https://privacy.microsoft.com/en-us/
-
-Microsoft and any contributors reserve all other rights, whether under their respective copyrights, patents,
-or trademarks, whether by implication, estoppel or otherwise.
+Ensure the SignalR client code connects to the correct endpoint:
+```javascript
+const connection = new signalR.HubConnectionBuilder()
+  .withUrl(`${BACKEND_URL}/api`)
+  .configureLogging(signalR.LogLevel.Information)
+  .build();
