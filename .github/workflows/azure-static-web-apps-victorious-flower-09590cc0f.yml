@@ -30,8 +30,8 @@ jobs:
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           app_location: "/solution/client" # App source code path
           output_location: "dist" # Built app content directory - optional
-          ###### End of Repository/Build Configurations ######
-          env:
+            ###### End of Repository/Build Configurations ######
+        env:
           BACKEND_URL: ${{ vars.BACKEND_URL }}
 
   close_pull_request_job:
