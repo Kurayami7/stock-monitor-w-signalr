@@ -164,3 +164,38 @@ const connection = new signalR.HubConnectionBuilder()
   .withUrl(`${BACKEND_URL}/api`)
   .configureLogging(signalR.LogLevel.Information)
   .build();
+```
+
+### SignalR Negotiation and Error Handling
+
+#### Negotiation
+Ensure the `/api/negotiate` endpoint is accessible. It should accept **POST** requests and be configured to handle the initial SignalR negotiation.
+
+#### Handling Errors
+
+- **404 and 405 Errors**: These errors often occur if `BACKEND_URL` is missing or incorrectly set.
+  - Ensure `BACKEND_URL` points to the correct Azure Function endpoint and doesn’t result in `/undefined/api`.
+
+### Troubleshooting Common Issues
+
+#### Errors During Deployment
+
+- **API Key Not Found**: Ensure the `azure_static_web_apps_api_token` secret is correctly set in GitHub Secrets.
+- **Undefined URLs**: Double-check that `BACKEND_URL` is set and passed correctly in GitHub Actions and `.env` files.
+- **Permissions Issues**: Ensure the GitHub Actions workflow has sufficient permissions to access Azure resources.
+
+#### Testing the Endpoints
+
+Verify that these URLs return expected responses:
+
+- `[BACKEND_URL]/api/negotiate`
+- `[BACKEND_URL]/api/getStocks`
+
+You can test directly in the browser or via `curl` commands.
+
+### Resources
+
+- [Azure SignalR service documentation](https://learn.microsoft.com/azure/azure-signalr/)
+- [Azure SignalR service samples](https://github.com/aspnet/AzureSignalR-samples)
+- [Azure Functions triggers and bindings for SignalR](https://learn.microsoft.com/azure/azure-functions/functions-bindings-signalr-service)
+
